@@ -71,27 +71,28 @@ export async function POST(request: NextRequest) {
       requestBody.tools = [{ googleSearch: {} }];
     }
 
-    const models = ["gemini-2.5-flash", "gemini-2.5-flash-preview-05-20", "gemini-1.5-flash"];
-    let res: Response | null = null;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
 
-    for (const model of models) {
+    let res: Response;
+    try {
       res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(requestBody),
+          signal: controller.signal,
         }
       );
-
-      if (res.ok) break;
-
-      const errorBody = await res.text();
-      console.warn(`Gemini chat model ${model} failed (${res.status}):`, errorBody);
+    } finally {
+      clearTimeout(timeout);
     }
 
-    if (!res || !res.ok) {
-      throw new Error(`Gemini API error: all models failed`);
+    if (!res.ok) {
+      const errorBody = await res.text();
+      console.error("Gemini chat error:", res.status, errorBody);
+      throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
     }
 
     const json = await res.json();

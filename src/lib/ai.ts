@@ -143,52 +143,51 @@ async function generateOpenAiAdvice(prompt: string, apiKey: string): Promise<str
 }
 
 async function generateGeminiAdvice(prompt: string, apiKey: string): Promise<string> {
-  const models = ["gemini-2.5-flash", "gemini-2.5-flash-preview-05-20", "gemini-1.5-flash"];
-  const body = JSON.stringify({
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text:
-              "You are a helpful, cautious financial planning assistant. Provide concise, actionable retirement and savings advice. Avoid specific stock picks. Include a brief disclaimer that this is not professional financial advice.\n\n" +
-              prompt,
-          },
-        ],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.6,
-      maxOutputTokens: 1500,
-    },
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
 
-  let res: Response | null = null;
-
-  for (const model of models) {
-    res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body,
+        signal: controller.signal,
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text:
+                    "You are a helpful, cautious financial planning assistant. Provide concise, actionable retirement and savings advice. Avoid specific stock picks. Include a brief disclaimer that this is not professional financial advice.\n\n" +
+                    prompt,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.6,
+            maxOutputTokens: 1500,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        }),
       }
     );
 
-    if (res.ok) break;
-    console.warn(`Gemini advice model ${model} failed (${res.status})`);
-  }
+    if (!res.ok) {
+      throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
+    }
 
-  if (!res || !res.ok) {
-    throw new Error(`Gemini API error: all models failed`);
+    const json = await res.json();
+    const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text || typeof text !== "string") {
+      throw new Error("Unexpected Gemini response format");
+    }
+    return text.trim();
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const json = await res.json();
-  const text = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text || typeof text !== "string") {
-    throw new Error("Unexpected Gemini response format");
-  }
-  return text.trim();
 }
 
 function buildPrompt(payload: AdvicePayload): string {
