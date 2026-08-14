@@ -9,21 +9,39 @@ export async function GET() {
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            { role: "user", parts: [{ text: "Say hello in one sentence." }] },
+          ],
+          generationConfig: {
+            maxOutputTokens: 50,
+          },
+        }),
+      }
     );
+
+    if (!res.ok) {
+      const errorBody = await res.text();
+      return NextResponse.json({
+        status: res.status,
+        statusText: res.statusText,
+        error: errorBody,
+      });
+    }
+
     const data = await res.json();
-    const modelNames = data.models?.slice(0, 5).map((m: { name: string }) => m.name) || [];
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     return NextResponse.json({
       status: res.status,
-      keyPrefix: apiKey.substring(0, 6),
-      keyLength: apiKey.length,
-      models: modelNames,
+      reply: text,
     });
   } catch (err) {
     return NextResponse.json({
       error: err instanceof Error ? err.message : "Unknown error",
-      keyPrefix: apiKey.substring(0, 6),
-      keyLength: apiKey.length,
     });
   }
 }
