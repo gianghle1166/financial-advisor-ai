@@ -143,34 +143,44 @@ async function generateOpenAiAdvice(prompt: string, apiKey: string): Promise<str
 }
 
 async function generateGeminiAdvice(prompt: string, apiKey: string): Promise<string> {
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [
+  const models = ["gemini-2.5-flash", "gemini-2.5-flash-preview-05-20", "gemini-1.5-flash"];
+  const body = JSON.stringify({
+    contents: [
+      {
+        role: "user",
+        parts: [
           {
-            role: "user",
-            parts: [
-              {
-                text:
-                  "You are a helpful, cautious financial planning assistant. Provide concise, actionable retirement and savings advice. Avoid specific stock picks. Include a brief disclaimer that this is not professional financial advice.\n\n" +
-                  prompt,
-              },
-            ],
+            text:
+              "You are a helpful, cautious financial planning assistant. Provide concise, actionable retirement and savings advice. Avoid specific stock picks. Include a brief disclaimer that this is not professional financial advice.\n\n" +
+              prompt,
           },
         ],
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 1500,
-        },
-      }),
-    }
-  );
+      },
+    ],
+    generationConfig: {
+      temperature: 0.6,
+      maxOutputTokens: 1500,
+    },
+  });
 
-  if (!res.ok) {
-    throw new Error(`Gemini API error: ${res.status} ${res.statusText}`);
+  let res: Response | null = null;
+
+  for (const model of models) {
+    res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body,
+      }
+    );
+
+    if (res.ok) break;
+    console.warn(`Gemini advice model ${model} failed (${res.status})`);
+  }
+
+  if (!res || !res.ok) {
+    throw new Error(`Gemini API error: all models failed`);
   }
 
   const json = await res.json();
