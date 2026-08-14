@@ -148,7 +148,7 @@ async function generateGeminiAdvice(prompt: string, apiKey: string): Promise<str
 
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -169,7 +169,6 @@ async function generateGeminiAdvice(prompt: string, apiKey: string): Promise<str
           generationConfig: {
             temperature: 0.6,
             maxOutputTokens: 1500,
-            thinkingConfig: { thinkingBudget: 0 },
           },
         }),
       }
