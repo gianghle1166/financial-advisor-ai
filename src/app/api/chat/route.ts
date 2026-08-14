@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
     }
 
     const apiKey = process.env.GOOGLE_API_KEY;
+    console.log("GOOGLE_API_KEY length:", apiKey?.length, "prefix:", apiKey?.substring(0, 6));
     if (!apiKey || apiKey.length < 10) {
       return NextResponse.json(
         { error: "Chat requires a Google API key. Add GOOGLE_API_KEY to .env.local." },
@@ -77,7 +78,7 @@ export async function POST(request: NextRequest) {
     let res: Response;
     try {
       res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
